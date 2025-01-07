@@ -198,14 +198,11 @@ if USE_XGB:
     classification_models['XGB'] = XGBClassifier(
         random_state=42,
         eval_metric='logloss',
-        n_estimators=1200,
-        max_depth=12,
+        n_estimators=700,
+        max_depth=8,
         learning_rate=0.01,
-        subsample=0.4,
-        colsample_bytree=0.4,
-        gamma=1.0,
-        reg_alpha=0.5,
-        reg_lambda=2.0,
+        subsample=0.7,
+        colsample_bytree=0.7,
         min_child_weight=3,
         # Uncomment if you have GPU build of XGBoost
         # tree_method='gpu_hist',
@@ -225,14 +222,11 @@ if USE_RANDOM_FOREST:
 if USE_XGB:
     regression_models['XGB'] = XGBRegressor(
         random_state=42,
-        n_estimators=1200,
-        max_depth=12,
+        n_estimators=700,
+        max_depth=8,
         learning_rate=0.01,
-        subsample=0.4,
-        colsample_bytree=0.4,
-        gamma=1.0,
-        reg_alpha=0.5,
-        reg_lambda=2.0,
+        subsample=0.7,
+        colsample_bytree=0.7,
         min_child_weight=3,
         # Uncomment if you have GPU build of XGBoost
         # tree_method='gpu_hist',

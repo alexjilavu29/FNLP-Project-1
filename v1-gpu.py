@@ -20,30 +20,35 @@ from scipy.stats import spearmanr, kendalltau
 from sklearn.preprocessing import LabelEncoder
 
 ##############################
-# 1. Load and Inspect Data
+# 1. Configuration
+##############################
+# NOTE: You can modify 'nrows_to_use' to limit the number of rows read from the CSV.
+# For example, set nrows_to_use = 1000 to only read 1000 rows from the file.
+nrows_to_use = 50000  # Currently set to None -> read ALL rows
+
+##############################
+# 2. Load and Inspect Data
 ##############################
 
-df = pd.read_csv('data-adjusted.csv', sep = ';')  # Adjust path as needed
+df = pd.read_csv('data-adjusted.csv', nrows=nrows_to_use, sep = ';')  # Adjust path as needed
 
-# For demonstration, let's print a quick summary
 print("Data shape:", df.shape)
 print(df.head())
 
 ##############################
-# 2. Basic Text Cleaning
+# 3. Basic Text Cleaning
 ##############################
 
 def clean_text(text):
     """
     Basic text cleaning:
     - Lowercase
-    - Remove extra spaces
-    - (Optional) Remove URLs, special chars, etc.
+    - Remove typical URL patterns
+    - Remove extra non-alphanumeric characters
+    - Convert multiple spaces to single space
     """
     text = text.lower()
-    # Remove typical URL patterns
-    text = re.sub(r'http\S+|www.\S+', ' ', text)
-    # Remove extra non-alphanumeric characters, keep basic punctuation or not
+    text = re.sub(r'http\S+|www.\S+', ' ', text)  # remove URLs
     text = re.sub(r'[^a-z0-9\s.,!?]', ' ', text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
@@ -51,77 +56,79 @@ def clean_text(text):
 df['text_clean'] = df['text'].astype(str).apply(clean_text)
 
 ##############################
-# 3. Encode Targets
+# 4. Encode Targets
 ##############################
 
-# 3.1 Encode gender: male -> 0, female -> 1
+# 4.1 Encode gender: male -> 0, female -> 1
 df['gender_encoded'] = df['gender'].map({'male': 0, 'female': 1})
 
-# 3.2 Age stays numeric (for regression)
-# Make sure it's numeric
+# 4.2 Age stays numeric (for regression)
 df['age'] = pd.to_numeric(df['age'], errors='coerce')
 
-# 3.3 Encode topic as multi-class
+# 4.3 Encode topic as multi-class
 topic_encoder = LabelEncoder()
 df['topic_encoded'] = topic_encoder.fit_transform(df['topic'].astype(str))
 
 ##############################
-# 4. Split Train/Test
+# 5. Split Train/Test
 ##############################
 
-# We'll do a single train_test_split, but we have three tasks:
-# (A) Predict gender (classification)
-# (B) Predict age (regression)
-# (C) Predict topic (classification)
-
-# For simplicity, we do one global split so the text in train/test is consistent
 train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, shuffle=True)
 
 print("Train size:", train_df.shape)
 print("Test size:", test_df.shape)
 
 ##############################
-# 5. Feature Extraction (Tfidf)
+# 6. Feature Extraction (Tfidf)
 ##############################
 
-# Fit TF-IDF on training 'text_clean'
 tfidf = TfidfVectorizer(
-    max_features=5000,     # you can tune
-    ngram_range=(1, 2),    # you can tune
-    stop_words='english'   # optional
+    max_features=5000,     # can tune
+    ngram_range=(1, 2),    # can tune
+    stop_words='english'   # can remove or change
 )
-
-# Learn vocabulary on train set
 tfidf.fit(train_df['text_clean'])
 
-# Transform text into TF-IDF vectors
 X_train = tfidf.transform(train_df['text_clean'])
 X_test = tfidf.transform(test_df['text_clean'])
 
 ##############################
-# 6. Define Models to Compare
+# 7. Define Models
 ##############################
 
 # For classification tasks (gender, topic):
 classification_models = {
+    # RandomForest on CPU
     'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42),
-    'XGB': XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss',tree_method='gpu_hist',predictor='gpu_predictor'),
+    # XGBoost on GPU
+    'XGB': XGBClassifier(
+        random_state=42,
+        use_label_encoder=False,
+        eval_metric='logloss',
+        #tree_method='gpu_hist',       # GPU usage
+        #predictor='gpu_predictor'
+    ),
 }
 
 # For regression tasks (age):
 regression_models = {
+    # RandomForest on CPU
     'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42),
-    'XGB': XGBRegressor(random_state=42, tree_method='gpu_hist',predictor='gpu_predictor'),
+    # XGBoost on GPU
+    'XGB': XGBRegressor(
+        random_state=42,
+        #tree_method='gpu_hist',       # GPU usage
+        #predictor='gpu_predictor'
+    ),
 }
 
 ##############################
-# 7. Training & Evaluation Helpers
+# 8. Metrics
 ##############################
 
 def evaluate_classification(y_true, y_pred):
     """
     Return a dict with: Accuracy, Spearman, Kendall, MAE, MSE
-    y_true, y_pred: numeric arrays
     """
     acc = accuracy_score(y_true, y_pred)
     spear = spearmanr(y_true, y_pred).correlation
@@ -138,16 +145,14 @@ def evaluate_classification(y_true, y_pred):
 
 def evaluate_regression(y_true, y_pred):
     """
-    Return a dict with: (dummy Accuracy?), Spearman, Kendall, MAE, MSE
-    For age, we typically focus on correlation and error metrics.
-    We'll set 'Accuracy' to NaN or skip it since it's not typical for regression.
+    Return a dict with: Accuracy (NaN), Spearman, Kendall, MAE, MSE
     """
     spear = spearmanr(y_true, y_pred).correlation
     kend = kendalltau(y_true, y_pred).correlation
     mae = mean_absolute_error(y_true, y_pred)
     mse = mean_squared_error(y_true, y_pred)
     return {
-        'Accuracy': np.nan,  # Not meaningful in typical regression
+        'Accuracy': np.nan,  # Not relevant for regression
         'Spearman': spear,
         'Kendall': kend,
         'MAE': mae,
@@ -155,12 +160,12 @@ def evaluate_regression(y_true, y_pred):
     }
 
 ##############################
-# 8. Train & Evaluate Each Characteristic
+# 9. Train & Evaluate
 ##############################
 
-results = []  # will hold dicts that we convert to DataFrame
+results = []
 
-# --- 8A. Gender (binary classification) ---
+# --- 9A. Gender (binary classification) ---
 y_train_gender = train_df['gender_encoded'].values
 y_test_gender = test_df['gender_encoded'].values
 
@@ -174,7 +179,7 @@ for model_name, model in classification_models.items():
         **metrics
     })
 
-# --- 8B. Age (regression) ---
+# --- 9B. Age (regression) ---
 y_train_age = train_df['age'].values
 y_test_age = test_df['age'].values
 
@@ -188,7 +193,7 @@ for model_name, model in regression_models.items():
         **metrics
     })
 
-# --- 8C. Topic (multi-class classification) ---
+# --- 9C. Topic (multi-class classification) ---
 y_train_topic = train_df['topic_encoded'].values
 y_test_topic = test_df['topic_encoded'].values
 
@@ -203,12 +208,13 @@ for model_name, model in classification_models.items():
     })
 
 ##############################
-# 9. Results Table
+# 10. Results Table
 ##############################
 
-results_df = pd.DataFrame(results, columns=[
-    'Characteristic', 'Model', 'Accuracy', 'Spearman', 'Kendall', 'MAE', 'MSE'
-])
+results_df = pd.DataFrame(
+    results,
+    columns=['Characteristic', 'Model', 'Accuracy', 'Spearman', 'Kendall', 'MAE', 'MSE']
+)
 
 print("\n===== Final Results =====")
 print(results_df)

@@ -1,0 +1,2 @@
+Characteristic;Model;Accuracy;Spearman;Kendall;MAE;MSE
+Topic;BERTTopic_RF;0.3615;-0.013321165675334022;-0.011741135249061611;9.274;218.211

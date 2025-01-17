@@ -48,7 +48,7 @@ USE_XGB = True
 USE_BERT = False   # Will do BERT embeddings for topic classification
 
 # CSV reading parameters (adjust delimiter as needed)
-CSV_PATH = 'data-adjusted.csv'
+CSV_PATH = 'data.csv'
 CSV_SEP = ';'   # e.g., ';' if semicolon-delimited, ',' if comma-delimited
 
 # For demonstration, we'll use BERT only for the "Topic" classification.

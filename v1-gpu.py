@@ -30,7 +30,7 @@ nrows_to_use = 100000  # Currently set to None -> read ALL rows
 # 2. Load and Inspect Data
 ##############################
 
-df = pd.read_csv('data-adjusted.csv', sep = ';')  # Adjust path as needed
+df = pd.read_csv('data.csv', sep =';')  # Adjust path as needed
 df = df.sample(n=nrows_to_use, random_state=42) if nrows_to_use else df
 
 print("Data shape:", df.shape)

@@ -1,3 +1,5 @@
+import gensim
+import gensim.downloader
 import pandas as pd
 import numpy as np
 import re
@@ -15,7 +17,6 @@ from sklearn.metrics import (
 from scipy.stats import spearmanr, kendalltau
 from sklearn.preprocessing import LabelEncoder
 
-# Hugging Face Transformers
 import torch
 from transformers import BertTokenizer, BertModel
 
@@ -23,31 +24,22 @@ from transformers import BertTokenizer, BertModel
 # 1. Configuration & Flags
 ##############################
 
-# NOTE: You can modify 'nrows_to_use' to limit the number of rows read from the CSV.
-# For example, set nrows_to_use = 1000 to only read 1000 rows from the file.
-# If set to None, it reads ALL rows.
-nrows_to_use = 10000
+rows_to_use = 10000
 
-# Model usage flags - set any to False to skip that model
 USE_RANDOM_FOREST = False
 USE_XGB = True
-USE_BERT = False   # Will do BERT embeddings for topic classification
+USE_BERT = False
 
-# CSV reading parameters (adjust delimiter as needed)
-CSV_PATH = 'data.csv'
-CSV_SEP = ';'   # e.g., ';' if semicolon-delimited, ',' if comma-delimited
-
-# For demonstration, we'll use BERT only for the "Topic" classification.
-# You could also apply BERT embeddings to "Gender" or "Age" tasks if you wish.
+CSV_FILE = 'data.csv'
+CSV_SEP = ';'
 
 ##############################
 # 2. Load and Inspect Data
 ##############################
 
-df = pd.read_csv(CSV_PATH, sep=CSV_SEP)
-if nrows_to_use is not None:
-    # randomly sample 'nrows_to_use' rows for training, if you want
-    df = df.sample(n=nrows_to_use, random_state=42)
+df = pd.read_csv(CSV_FILE, sep=CSV_SEP)
+if rows_to_use is not None:
+    df = df.sample(n=rows_to_use, random_state=42)
 
 print("Data shape:", df.shape)
 print(df.head())
@@ -56,16 +48,10 @@ print(df.head())
 # 3. Basic Text Cleaning
 ##############################
 
+# I would change this clean_test function because it looks very much like a Chat function
 def clean_text(text):
-    """
-    Basic text cleaning:
-    - Lowercase
-    - Remove typical URL patterns
-    - Remove extra non-alphanumeric characters
-    - Convert multiple spaces to single space
-    """
     text = text.lower()
-    text = re.sub(r'http\S+|www.\S+', ' ', text)  # remove URLs
+    text = re.sub(r'http\S+|www.\S+', ' ', text)
     text = re.sub(r'[^a-z0-9\s.,!?]', ' ', text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
@@ -100,15 +86,35 @@ print("Test size:", test_df.shape)
 ##############################
 
 # 6A. TF-IDF (used for RandomForest / XGB by default)
-tfidf = TfidfVectorizer(
-    max_features=5000,     # can tune
-    ngram_range=(1, 2),    # can tune
-    stop_words='english'   # can remove or change
-)
-tfidf.fit(train_df['text_clean'])
+def tokenise(text_column):
+    tfidf = TfidfVectorizer(
+        max_features=5000,     # can tune
+        ngram_range=(1, 2),    # can tune
+        stop_words='english'   # can remove or change
+    )
+    tfidf.fit(train_df['text_clean'])
+    return tfidf.transform(text_column)
 
-X_train_tfidf = tfidf.transform(train_df['text_clean'])
-X_test_tfidf = tfidf.transform(test_df['text_clean'])
+def compute_w2v(text_column,word2vec):
+    train_emb = []
+    for row in text_column:
+        words = row.split(' ')
+        words = filter(lambda x: x in word2vec, words)
+        text_emb = [word2vec[word] for word in words]
+
+        if len(text_emb) == 0:
+            train_emb.append(np.zeros(300))
+            continue
+
+        doc_embedding = np.mean(text_emb, axis=0)
+        train_emb.append(doc_embedding)
+    return np.array(train_emb)
+
+def tokenise_w2v(text_column_train,text_column_test):
+    word2vec = gensim.downloader.load('word2vec-google-news-300')
+    return compute_w2v(text_column_train,word2vec),compute_w2v(text_column_test,word2vec)
+
+X_train_tokenised, X_test_tokenised = tokenise_w2v(train_df['text_clean'],test_df['text_clean'])
 
 # 6B. BERT Embeddings (for topic classification, or any classification you choose)
 #    We'll define a helper function to embed a list of texts with a pretrained BERT model.
@@ -288,8 +294,8 @@ for model_name, model in classification_models.items():
         continue
 
     print(f"\nTraining {model_name} for Gender classification...")
-    model.fit(X_train_tfidf, y_train_gender)
-    y_pred_gender = model.predict(X_test_tfidf)
+    model.fit(X_train_tokenised, y_train_gender)
+    y_pred_gender = model.predict(X_test_tokenised)
     metrics = evaluate_classification(y_test_gender, y_pred_gender)
     results.append({
         'Characteristic': 'Gender',
@@ -303,8 +309,8 @@ for model_name, model in classification_models.items():
 # We'll train each regression model on TF-IDF features
 for model_name, model in regression_models.items():
     print(f"\nTraining {model_name} for Age regression...")
-    model.fit(X_train_tfidf, y_train_age)
-    y_pred_age = model.predict(X_test_tfidf)
+    model.fit(X_train_tokenised, y_train_age)
+    y_pred_age = model.predict(X_test_tokenised)
     metrics = evaluate_regression(y_test_age, y_pred_age)
     results.append({
         'Characteristic': 'Age',
@@ -327,8 +333,8 @@ for model_name, model in classification_models.items():
         y_pred_topic = model.predict(X_test_bert)
     else:
         # Use TF-IDF
-        model.fit(X_train_tfidf, y_train_topic)
-        y_pred_topic = model.predict(X_test_tfidf)
+        model.fit(X_train_tokenised, y_train_topic)
+        y_pred_topic = model.predict(X_test_tokenised)
 
     metrics = evaluate_classification(y_test_topic, y_pred_topic)
     results.append({
@@ -350,6 +356,6 @@ print("\n===== Final Results =====")
 print(results_df)
 
 # Optionally, save to CSV
-results_df.to_csv('model_evaluation_results-v2.csv', index=False)
+results_df.to_csv('model_evaluation_results-W2VATTEMPT.csv', index=False)
 
 print("\nDone!")

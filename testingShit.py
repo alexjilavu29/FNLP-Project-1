@@ -28,7 +28,7 @@ from sklearn.preprocessing import LabelEncoder
 # 2. Load and Inspect Data
 ##############################
 
-df = pd.read_csv('data-adjusted.csv', sep = ';')  # Adjust path as needed
+df = pd.read_csv('data.csv', sep =';')  # Adjust path as needed
 df = df.sample(10000,random_state=17)
 
 print("Data shape:", df.shape)

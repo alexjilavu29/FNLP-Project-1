@@ -6,9 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="ceffba62-3094-4118-af4e-d732b52230ca" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GridSearchCode.py" beforeDir="false" afterPath="$PROJECT_DIR$/GridSearchCode.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/final-main-cys.py" beforeDir="false" afterPath="$PROJECT_DIR$/final-main-cys.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/testingShit.py" beforeDir="false" afterPath="$PROJECT_DIR$/testingShit.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/final-main-NLP.py" beforeDir="false" afterPath="$PROJECT_DIR$/final-main-NLP.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,6 +37,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.final-main-NLP.executor": "Run",
     "Python.final-main-cys.executor": "Run",
     "Python.final-main.executor": "Run",
     "Python.testingShit.executor": "Run",

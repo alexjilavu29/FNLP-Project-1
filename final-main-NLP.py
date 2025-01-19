@@ -312,11 +312,6 @@ def main():
     # Train and test
     y_train = train_df[["gender_encoded", "age", "topic_encoded"]]
     y_test = test_df[["gender_encoded", "age", "topic_encoded"]]
-    print("SVM model:")
-    results_svm = use_SVM_Models(X_train_tokenised, y_train, X_test_tokenised, y_test)
-    SVM_results_df = pd.DataFrame(results_svm, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
-                                  index=["XGB - Gender", "XGB - Age", "XGB - Topic"])
-    print(SVM_results_df)
     print("XGB model:")
     results_xgb = use_XGB_Models(X_train_tokenised, y_train, X_test_tokenised, y_test)
     XGB_results_df = pd.DataFrame(results_xgb, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
@@ -329,9 +324,9 @@ def main():
     print(RF_results_df)
 
     print("Final results:")
-    final_results = pd.concat([XGB_results_df, RF_results_df,SVM_results_df])
+    final_results = pd.concat([XGB_results_df, RF_results_df])
     print(final_results)
-    SVM_results_df.to_csv("model_evaluation.csv", index=True)
+    final_results.to_csv("model_evaluation.csv", index=True)
 
 
 main()

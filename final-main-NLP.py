@@ -72,6 +72,7 @@ def tokenise(tokeniser, text_column_train, text_column_test):
 
 
 def n_grams_with_tfidf(text_column_train, text_column_test):
+    print(f"Tokenising data with n_grams")
     word_vectorizer = TfidfVectorizer(ngram_range=(1, 2), analyzer="word")
     character_vectorizer = CountVectorizer(ngram_range=(3, 5), analyzer="char")
     feature_union = FeatureUnion([('tfidf', word_vectorizer), ('charvect', character_vectorizer)])
@@ -80,6 +81,7 @@ def n_grams_with_tfidf(text_column_train, text_column_test):
 
 
 def tokenise_tf_idf(text_column_train, text_column_test):
+    print(f"Tokenising data with TF-IDF")
     tfidf = TfidfVectorizer(
         max_features=5000,
         ngram_range=(1, 2),
@@ -90,6 +92,7 @@ def tokenise_tf_idf(text_column_train, text_column_test):
 
 
 def tokenise_bert(text_column_train, text_column_test):
+    print(f"Tokenising data with BERT")
     device = torch.device("mps" if torch.mps.is_available() else "cpu")
     bert_tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     bert_model = BertModel.from_pretrained("bert-base-uncased").to(device)
@@ -125,6 +128,7 @@ def get_bert_embeddings(tokeniser, model, device, texts, batch_size=16):
 
 
 def tokenise_w2v(text_column_train, text_column_test):
+    print(f"Tokenising data with W2V")
     word2vec = gensim.downloader.load("word2vec-google-news-300")
     return compute_w2v(text_column_train, word2vec), compute_w2v(text_column_test, word2vec)
 
@@ -303,8 +307,7 @@ def main():
     show_data(train_df)
     show_data(test_df)
     # Extract features
-    TOKENISER = "n_grams"
-    print(f"Tokenising data with {TOKENISER}")
+    TOKENISER = "TF-IDF"
     X_train_tokenised, X_test_tokenised = tokenise(TOKENISER, train_df["text_clean"], test_df["text_clean"])
     # Train and test
     y_train = train_df[["gender_encoded", "age", "topic_encoded"]]
@@ -314,21 +317,21 @@ def main():
     SVM_results_df = pd.DataFrame(results_svm, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
                                   index=["XGB - Gender", "XGB - Age", "XGB - Topic"])
     print(SVM_results_df)
-    # print("XGB model:")
-    # results_xgb = use_XGB_Models(X_train_tokenised, y_train, X_test_tokenised, y_test)
-    # XGB_results_df = pd.DataFrame(results_xgb, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
-    #                               index=["XGB - Gender", "XGB - Age", "XGB - Topic"])
-    # print(XGB_results_df)
-    # print("RF model:")
-    # results_rf = use_Random_Forest(X_train_tokenised, y_train, X_test_tokenised, y_test)
-    # RF_results_df = pd.DataFrame(results_rf, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
-    #                              index=["RF - Gender", "RF - Age", "RF - Topic"])
-    # print(RF_results_df)
+    print("XGB model:")
+    results_xgb = use_XGB_Models(X_train_tokenised, y_train, X_test_tokenised, y_test)
+    XGB_results_df = pd.DataFrame(results_xgb, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
+                                  index=["XGB - Gender", "XGB - Age", "XGB - Topic"])
+    print(XGB_results_df)
+    print("RF model:")
+    results_rf = use_Random_Forest(X_train_tokenised, y_train, X_test_tokenised, y_test)
+    RF_results_df = pd.DataFrame(results_rf, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
+                                 index=["RF - Gender", "RF - Age", "RF - Topic"])
+    print(RF_results_df)
 
-    # print("Final results:")
-    # final_results = pd.concat([XGB_results_df, RF_results_df])
-    # print(final_results)
-    SVM_results_df.to_csv("model_evaluation_10k_svm_tf.csv", index=True)
+    print("Final results:")
+    final_results = pd.concat([XGB_results_df, RF_results_df,SVM_results_df])
+    print(final_results)
+    SVM_results_df.to_csv("model_evaluation.csv", index=True)
 
 
 main()

@@ -1,13 +1,13 @@
 XGB_CLASSIFIER_PARAM_GRID = {
-    'n_estimators': [1200],
-    'max_depth': [5],
-    'min_child_weight': [1],
-    'learning_rate': [0.05],
+    'n_estimators': [1200,1400,1600],
+    'max_depth': [5,6,7],
+    'min_child_weight': [1,2],
+    'learning_rate': [0.05,0.1],
     'subsample': [1.0],
     'colsample_bytree': [1.0],
     'gamma': [0],
-    'reg_alpha': [0.1],
-    'reg_lambda': [1.0],
+    'reg_alpha': [0.1,0.2,0.5],
+    'reg_lambda': [1.0,2.0],
 }
 
 XGB_REGRESSOR_PARAM_GRID = {

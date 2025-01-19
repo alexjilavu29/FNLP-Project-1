@@ -18,6 +18,7 @@ from transformers import BertTokenizer, BertModel
 from gensim.models import word2vec
 import gensim.downloader
 from sklearn.pipeline import FeatureUnion
+from sklearn.svm import SVC, SVR
 
 
 #  Get Data
@@ -145,39 +146,28 @@ def compute_w2v(text_column, word2vec):
 
 
 #  Apply models
-XGB_REGRESSOR_PARAM_GRID = {
-    "n_estimators": [1200],
-    "max_depth": [12],
-    "learning_rate": [0.01],
-    "subsample": [0.4],
-    "colsample_bytree": [0.4],
-    "gamma": [1.0],
-    "reg_alpha": [0.5],
-    "reg_lambda": [2.0],
-    "min_child_weight": [3],
-}
+def use_SVM_Models(X_train, y_train_all, X_test, y_test_all):
+    print("Training for gender classification:")
+    gender_results = SVM_classifier(X_train, y_train_all["gender_encoded"], X_test, y_test_all["gender_encoded"])
+    print("Training for age regression:")
+    age_results = SVM_regressor(X_train, y_train_all["age"], X_test, y_test_all["age"])
+    print("Training for topic classification:")
+    topic_results = SVM_classifier(X_train, y_train_all["topic_encoded"], X_test, y_test_all["topic_encoded"])
+    return [gender_results, age_results, topic_results]
 
-
-def use_BERT_embeddings(X_train, y_train, X_test, y_test):
-    classifier = XGBClassifier(
-        random_state=17,
-        eval_metrics="logloss",
-        n_estimators=1200,
-        max_depth=5,
-        min_child_weight=1,
-        learning_rate=0.05,
-        subsample=1.0,
-        colsample_bytree=1.0,
-        gamma=0,
-        reg_alpha=0.1,
-        reg_lambda=1.0,
-    )
-    y_pred = train_and_predict(classifier, X_train, y_train, X_test)
-    metrics = classification_results(y_test, y_pred)
-    print("Classification results (BERT):")
+def SVM_classifier(X_train,y_train,X_test,y_test):
+    svm = SVC(kernel="linear",random_state=17)
+    y_pred = train_and_predict(svm,X_train,y_train,X_test)
+    metrics = classification_results(y_test,y_pred)
     print(metrics)
     return metrics
 
+def SVM_regressor(X_train,y_train,X_test,y_test):
+    svm = SVR(kernel="linear")
+    y_pred = train_and_predict(svm,X_train,y_train,X_test)
+    metrics = classification_results(y_test,y_pred)
+    print(metrics)
+    return metrics
 
 def use_XGB_Models(X_train, y_train_all, X_test, y_test_all):
     print("Training for gender classification:")
@@ -313,27 +303,32 @@ def main():
     show_data(train_df)
     show_data(test_df)
     # Extract features
-    TOKENISER = "TF-IDF"
+    TOKENISER = "n_grams"
     print(f"Tokenising data with {TOKENISER}")
     X_train_tokenised, X_test_tokenised = tokenise(TOKENISER, train_df["text_clean"], test_df["text_clean"])
     # Train and test
     y_train = train_df[["gender_encoded", "age", "topic_encoded"]]
     y_test = test_df[["gender_encoded", "age", "topic_encoded"]]
-    print("XGB model:")
-    results_xgb = use_XGB_Models(X_train_tokenised, y_train, X_test_tokenised, y_test)
-    XGB_results_df = pd.DataFrame(results_xgb, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
+    print("SVM model:")
+    results_svm = use_SVM_Models(X_train_tokenised, y_train, X_test_tokenised, y_test)
+    SVM_results_df = pd.DataFrame(results_svm, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
                                   index=["XGB - Gender", "XGB - Age", "XGB - Topic"])
-    print(XGB_results_df)
-    print("RF model:")
-    results_rf = use_Random_Forest(X_train_tokenised, y_train, X_test_tokenised, y_test)
-    RF_results_df = pd.DataFrame(results_rf, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
-                                 index=["RF - Gender", "RF - Age", "RF - Topic"])
-    print(RF_results_df)
+    print(SVM_results_df)
+    # print("XGB model:")
+    # results_xgb = use_XGB_Models(X_train_tokenised, y_train, X_test_tokenised, y_test)
+    # XGB_results_df = pd.DataFrame(results_xgb, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
+    #                               index=["XGB - Gender", "XGB - Age", "XGB - Topic"])
+    # print(XGB_results_df)
+    # print("RF model:")
+    # results_rf = use_Random_Forest(X_train_tokenised, y_train, X_test_tokenised, y_test)
+    # RF_results_df = pd.DataFrame(results_rf, columns=["MAE", "MSE", "Accuracy", "Spearman", "Kendall"],
+    #                              index=["RF - Gender", "RF - Age", "RF - Topic"])
+    # print(RF_results_df)
 
-    print("Final results:")
-    final_results = pd.concat([XGB_results_df, RF_results_df])
-    print(final_results)
-    final_results.to_csv("model_evaluation_full_values_TFIDF.csv", index=True)
+    # print("Final results:")
+    # final_results = pd.concat([XGB_results_df, RF_results_df])
+    # print(final_results)
+    SVM_results_df.to_csv("model_evaluation_10k_svm_tf.csv", index=True)
 
 
 main()

@@ -1,0 +1,7 @@
+,MAE,MSE,Accuracy,Spearman,Kendall
+RF - Age,,,,,
+RF - Gender,,,,,
+RF - Topic,,,,,
+XGB - Age,,,,,
+XGB - Gender,,,,,
+XGB - Topic,,,,,
